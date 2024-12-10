@@ -2,8 +2,6 @@ import pprint
 import torch
 import os
 import wandb
-os.environ["WANDB_API_KEY"] = ""
-#os.environ["WANDB_MODE"] = "offline"
 class Parameters:
     def __init__(self, cla, init=True):
         if not init:
@@ -125,7 +123,7 @@ class Parameters:
         self.EA_tau = cla.EA_tau
         self.name = "EvoRainbow_H_step_Value_Function_"+str(self.Value_Function)+"_Theta_"+ str(self.theta)+ "_"+ str(self.gamma)+ "_EA_guide_RL_"+ str(self.Soft_Update) + "_"+ str(self.EA_tau) +"_Add_CEM_use_Re2_"+ str(self.sigma_init)+ "_from_"+str(self.damp) +"_to_"+str(self.damp_limit)+"_H_alpha_" +str(self.time_steps)  +"_K_" + str(self.K) + "_"  + str(self.env_name)
 
-        self.wandb = wandb.init(project="Revisiting",name=self.name)
+        self.wandb = wandb.init(project="EvoRainbow",name=self.name)
 
         self.wandb.config.rl_to_ea_synch_period = self.rl_to_ea_synch_period
         self.wandb.config.env = cla.env

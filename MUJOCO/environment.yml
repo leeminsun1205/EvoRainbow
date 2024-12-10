@@ -87,5 +87,5 @@ dependencies:
     - urllib3==1.26.15
     - wandb==0.14.0
     - zipp==3.15.0
-prefix: /home/lpy/anaconda3/envs/revisiting
+prefix: /home/lpy/anaconda3/envs/EvoRainbow
 

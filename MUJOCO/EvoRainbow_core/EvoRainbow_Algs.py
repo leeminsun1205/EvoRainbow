@@ -107,7 +107,7 @@ class shared_state_embedding(nn.Module):
 from copy import deepcopy
 import math
 def to_numpy(var):
-    return var.data.numpy()
+    return var.detach().cpu().data.numpy()
 
 class Actor(nn.Module):
     def __init__(self, args, init=False):

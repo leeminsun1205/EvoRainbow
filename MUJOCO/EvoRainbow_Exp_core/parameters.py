@@ -2,8 +2,6 @@ import pprint
 import torch
 import os
 import wandb
-os.environ["WANDB_API_KEY"] = ""
-#os.environ["WANDB_MODE"] = "offline"
 class Parameters:
     def __init__(self, cla, init=True):
         if not init:
@@ -129,7 +127,7 @@ class Parameters:
        # if os.path.exists('./data/' + self.name +"_seed_"+str(self.seed)) is False:
        #     os.makedirs('./data/' + self.name +"_seed_"+str(self.seed))
 
-        self.wandb = wandb.init(project="Revisiting",name=self.name)
+        self.wandb = wandb.init(project="EvoRainbow",name=self.name)
 
         self.wandb.config.rl_to_ea_synch_period = self.rl_to_ea_synch_period
         self.wandb.config.env = cla.env
