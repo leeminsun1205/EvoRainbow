@@ -88,7 +88,6 @@ class Agent:
     def __init__(self, args: Parameters, env):
         self.args = args
         self.env = env
-        self.frames = []  # Initialize for storing frames
         
         # Init population
         self.pop = []
@@ -164,6 +163,43 @@ class Agent:
     def evaluate(self, agent: algs.GeneticAgent or algs.TD3, state_embedding_net, is_render=False, is_action_noise=False,
                  store_transition=True, net_index=None, is_random=False, rl_agent_collect_data=False, 
                  use_n_step_return=False, PeVFA=None, Critic=None):
+        display = Display(visible=0, size=(1024, 768))
+        display.start()
+        
+        
+        from matplotlib import pyplot as plt, animation
+        %matplotlib inline
+        from IPython import display
+        
+        def create_anim(frames, dpi, fps):
+            plt.figure(figsize=(frames[0].shape[1] / dpi, frames[0].shape[0] / dpi), dpi=dpi)
+            patch = plt.imshow(frames[0])
+            def setup():
+                plt.axis('off')
+            def animate(i):
+                patch.set_data(frames[i])
+            anim = animation.FuncAnimation(plt.gcf(), animate, init_func=setup, frames=len(frames), interval=fps)
+            return anim
+        
+        def display_anim(frames, dpi=72, fps=50):
+            anim = create_anim(frames, dpi, fps)
+            return anim.to_jshtml()
+        
+        def save_anim(frames, filename, dpi=72, fps=50):
+            anim = create_anim(frames, dpi, fps)
+            anim.save(filename)
+        
+        
+        class trigger:
+            def __init__(self):
+                self._trigger = True
+        
+            def __call__(self, e):
+                return self._trigger
+        
+            def set(self, t):
+                self._trigger = t
+                
         total_reward = 0.0
         total_error = 0.0
         policy_params = torch.nn.utils.parameters_to_vector(list(agent.actor.parameters())).data.cpu().numpy().reshape([-1])
@@ -178,7 +214,7 @@ class Agent:
         episode_timesteps = 0
         all_state = []
         all_action = []
-
+        frames = []
         while not done:
             if store_transition:
                 self.num_frames += 1
@@ -187,7 +223,7 @@ class Agent:
                     self.rl_agent_frames += 1
             if self.args.render and is_render:
                 try:
-                    frame = self.env.render(mode="rgb_array")  # Try to render the frame
+                    frames.append(self.env.render(mode='rgb_array'))
                     self.frames.append(frame)
                 except Exception as e:
                     print(f"Error rendering frame: {e}. Skipping frame capture.")
@@ -256,8 +292,7 @@ class Agent:
         if is_render and self.args.render:
             video_path = os.path.join("videos", f"eval_{self.iterations}.mp4")
             os.makedirs("videos", exist_ok=True)
-            self.save_video_and_log_to_wandb(video_path)
-
+            save_anim(frames, video_path)
         if store_transition:
             self.num_games += 1
 
