@@ -186,7 +186,7 @@ class Agent:
                 if rl_agent_collect_data:
                     self.rl_agent_frames += 1
             if self.args.render and is_render:
-               try:
+                try:
                     frame = self.env.render(mode="rgb_array")  # Try to render the frame
                     self.frames.append(frame)
                 except Exception as e:
