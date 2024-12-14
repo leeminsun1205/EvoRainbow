@@ -168,7 +168,6 @@ class Agent:
         
         
         from matplotlib import pyplot as plt, animation
-        %matplotlib inline
         from IPython import display
         
         def create_anim(frames, dpi, fps):
