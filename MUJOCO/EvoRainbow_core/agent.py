@@ -82,6 +82,7 @@ class Agent:
 import os
 import imageio
 import wandb
+from pyvirtualdisplay import Display
 
 class Agent:
     def __init__(self, args: Parameters, env):
@@ -185,8 +186,11 @@ class Agent:
                 if rl_agent_collect_data:
                     self.rl_agent_frames += 1
             if self.args.render and is_render:
+                display = Display(visible=0, size=(1400, 900))
+                display.start()
                 frame = self.env.render(mode="rgb_array")
                 self.frames.append(frame)
+                display.stop()
             
             if is_random:
                 action = self.env.action_space.sample()
