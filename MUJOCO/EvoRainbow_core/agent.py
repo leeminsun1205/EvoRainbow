@@ -186,12 +186,12 @@ class Agent:
                 if rl_agent_collect_data:
                     self.rl_agent_frames += 1
             if self.args.render and is_render:
-                display = Display(visible=0, size=(1400, 900))
-                display.start()
-                frame = self.env.render(mode="rgb_array")
-                self.frames.append(frame)
-                display.stop()
-            
+               try:
+                    frame = self.env.render(mode="rgb_array")  # Try to render the frame
+                    self.frames.append(frame)
+                except Exception as e:
+                    print(f"Error rendering frame: {e}. Skipping frame capture.")
+                    break  # Skip frame capture if rendering fails
             if is_random:
                 action = self.env.action_space.sample()
             else:
