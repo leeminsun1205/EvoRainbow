@@ -79,8 +79,90 @@ class Agent:
         self.previous_print = 0
 
 
+import os
+import imageio
+import wandb
+
+class Agent:
+    def __init__(self, args: Parameters, env):
+        self.args = args
+        self.env = env
+        self.frames = []  # Initialize for storing frames
+        
+        # Init population
+        self.pop = []
+        self.buffers = []
+        self.all_actors = []
+        for _ in range(args.pop_size):
+            genetic = algs.GeneticAgent(args)
+            self.pop.append(genetic)
+            self.all_actors.append(genetic.actor)
+
+        # Init RL Agent
+
+        self.Champion = algs.Champion(args)
+        self.rl_agent = algs.TD3(args)
+        self.replay_buffer = utils.ReplayBuffer()
+
+        self.all_actors.append(self.rl_agent.actor)
+
+        self.ounoise = algs.OUNoise(args.action_dim)
+        # self.evolver = utils_ne.SSNE(self.args, self.rl_agent.critic, self.evaluate,self.rl_agent.state_embedding, self.args.prob_reset_and_sup, self.args.frac)
+
+        ### CEM
+        self.CEM = sepCEM(self.pop[0].actor.get_size(), scale= args.scale, mu_init=self.pop[0].actor.get_params(),
+                          sigma_init=args.sigma_init, damp=args.damp,
+                          damp_limit=args.damp_limit,
+                          pop_size=args.pop_size, antithetic=not args.pop_size % 2, parents=args.pop_size // 2,
+                          elitism=args.elitism)
+
+        # Population novelty
+        self.ns_r = 1.0
+        self.ns_delta = 0.1
+        self.best_train_reward = 0.0
+        self.time_since_improv = 0
+        self.step = 1
+        self.use_real = 0
+        self.total_use = 0
+        # Trackers
+        self.num_games = 0; self.num_frames = 0; self.iterations = 0; self.gen_frames = None
+        self.rl_agent_frames = 0
+
+        self.old_fitness = None
+        self.evo_times = 0
+        self.previous_eval = 0
+        ### avarage agent
+        self.muagent = algs.GeneticAgent(args)
+
+        self.RL2EA = False
+        self.rl_index = None
+        self.evo_total_times = 0
+        self.elite = 0
+        self.num_two = 0
+        self.others = 0
+
+        self.previous_pop_info = None
+        self.current_pop_info = None
+
+        self.previous_print = 0
+
+    def save_video_and_log_to_wandb(self, video_path):
+        if self.frames:
+            print(f"Saving video to {video_path}...")
+            with imageio.get_writer(video_path, fps=30) as writer:
+                for frame in self.frames:
+                    writer.append_data(frame)
+            print("Video saved successfully.")
+
+            # Log video to WandB
+            wandb.log({"simulation_video": wandb.Video(video_path, fps=30, format="mp4")})
+
+            # Clear frames after logging
+            self.frames = []
+
     def evaluate(self, agent: algs.GeneticAgent or algs.TD3, state_embedding_net, is_render=False, is_action_noise=False,
-                 store_transition=True, net_index=None, is_random =False, rl_agent_collect_data = False,  use_n_step_return = False,PeVFA=None,Critic=None):
+                 store_transition=True, net_index=None, is_random=False, rl_agent_collect_data=False, 
+                 use_n_step_return=False, PeVFA=None, Critic=None):
         total_reward = 0.0
         total_error = 0.0
         policy_params = torch.nn.utils.parameters_to_vector(list(agent.actor.parameters())).data.cpu().numpy().reshape([-1])
@@ -89,9 +171,8 @@ class Agent:
 
         state_list = []
         reward_list = []
-
         action_list = []
-        policy_params_list =[]
+        policy_params_list = []
         n_step_discount_reward = 0.0
         episode_timesteps = 0
         all_state = []
@@ -99,25 +180,28 @@ class Agent:
 
         while not done:
             if store_transition:
-                self.num_frames += 1; self.gen_frames += 1
+                self.num_frames += 1
+                self.gen_frames += 1
                 if rl_agent_collect_data:
-                    self.rl_agent_frames +=1
-            if self.args.render and is_render: self.env.render()
+                    self.rl_agent_frames += 1
+            if self.args.render and is_render:
+                frame = self.env.render(mode="rgb_array")
+                self.frames.append(frame)
             
             if is_random:
                 action = self.env.action_space.sample()
-            else :
-                action = agent.actor.select_action(np.array(state),state_embedding_net)
+            else:
+                action = agent.actor.select_action(np.array(state), state_embedding_net)
                 if is_action_noise:
-                    
                     action = (action + np.random.normal(0, 0.1, size=self.args.action_dim)).clip(-1.0, 1.0)
             all_state.append(np.array(state))
             all_action.append(np.array(action))
+
             # Simulate one step in environment
             next_state, reward, done, info = self.env.step(action.flatten())
             done_bool = 0 if episode_timesteps + 1 == 1000 else float(done)
             total_reward += reward
-            n_step_discount_reward += math.pow(self.args.gamma,episode_timesteps)*reward
+            n_step_discount_reward += math.pow(self.args.gamma, episode_timesteps) * reward
             state_list.append(state)
             reward_list.append(reward)
             policy_params_list.append(policy_params)
@@ -126,8 +210,7 @@ class Agent:
             transition = (state, action, next_state, reward, done_bool)
             if store_transition:
                 next_action = agent.actor.select_action(np.array(next_state), state_embedding_net)
-                self.replay_buffer.add((state, next_state, action, reward, done_bool, next_action ,policy_params))
-                #self.replay_buffer.add(*transition)
+                self.replay_buffer.add((state, next_state, action, reward, done_bool, next_action, policy_params))
                 agent.buffer.add(*transition)
             episode_timesteps += 1
             state = next_state
@@ -165,9 +248,19 @@ class Agent:
                         n_step_discount_reward = total_reward
                     break
 
-        if store_transition: self.num_games += 1
+        # Save video and log to WandB if rendering is enabled
+        if is_render and self.args.render:
+            video_path = os.path.join("videos", f"eval_{self.iterations}.mp4")
+            os.makedirs("videos", exist_ok=True)
+            self.save_video_and_log_to_wandb(video_path)
 
-        return {'n_step_discount_reward':n_step_discount_reward,'reward': total_reward,  'td_error': total_error, "state_list": state_list, "reward_list":reward_list, "policy_prams_list":policy_params_list, "action_list":action_list}
+        if store_transition:
+            self.num_games += 1
+
+        return {'n_step_discount_reward': n_step_discount_reward, 'reward': total_reward, 'td_error': total_error,
+                "state_list": state_list, "reward_list": reward_list, "policy_prams_list": policy_params_list, 
+                "action_list": action_list}
+
 
 
     def rl_to_evo(self, rl_agent: algs.TD3, evo_net: algs.GeneticAgent):
