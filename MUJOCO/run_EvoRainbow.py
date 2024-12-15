@@ -39,60 +39,14 @@ parser.add_argument('-random_choose', help='Use random_choose', action='store_tr
 parser.add_argument('-per', help='Use Prioritised Experience Replay', action='store_true')
 parser.add_argument('-use_all', help='Use all', action='store_true')
 
-parser.add_argument('-intention', help='intention', action='store_true')
+parser.add_argument('-intention', heHERE
+if parameters.render:
+    video_folder = "./videos"  # Thư mục lưu video
+    if not os.path.exists(video_folder):
+        os.makedirs(video_folder)
+    env = RecordVideo(env, video_folder=video_folder)
+    print(f"Lưu video quá trình chơi tại: {video_folder}")
 
-parser.add_argument('-mut_mag', help='The magnitude of the mutation', type=float, default=0.05)
-parser.add_argument('-tau', help='tau', type=float, default=0.005)
-
-parser.add_argument('-prob_reset_and_sup', help='prob_reset_and_sup', type=float, default=0.05)
-parser.add_argument('-frac', help='frac', type=float, default=0.1)
-
-
-parser.add_argument('-TD3_noise', help='tau', type=float, default=0.2)
-parser.add_argument('-mut_noise', help='Use a random mutation magnitude', action='store_true')
-parser.add_argument('-verbose_mut', help='Make mutations verbose', action='store_true')
-parser.add_argument('-verbose_crossover', help='Make crossovers verbose', action='store_true')
-parser.add_argument('-logdir', help='Folder where to save results', type=str, required=True)
-parser.add_argument('-opstat', help='Store statistics for the variation operators', action='store_true')
-parser.add_argument('-opstat_freq', help='Frequency (in generations) to store operator statistics', type=int, default=1)
-parser.add_argument('-save_periodic', help='Save actor, critic and memory periodically', action='store_true')
-parser.add_argument('-next_save', help='Generation save frequency for save_periodic', type=int, default=200)
-parser.add_argument('-K', help='K', type=int, default=5)
-parser.add_argument('-OFF_TYPE', help='OFF_TYPE', type=int, default=1)
-parser.add_argument('-num_evals', help='num_evals', type=int, default=1)
-
-parser.add_argument('-version', help='version', type=int, default=1)
-parser.add_argument('-time_steps', help='time_steps', type=int, default=1)
-parser.add_argument('-test_operators', help='Runs the operator runner to test the operators', action='store_true')
-parser.add_argument('-EA_actor_alpha', help='EA_actor_alpha', type=float, default=1.0)
-parser.add_argument('-state_alpha', help='state_alpha', type=float, default=1.0)
-parser.add_argument('-actor_alpha', help='actor_alpha', type=float, default=1.0)
-parser.add_argument('-theta', help='theta', type=float, default=0.5)
-
-parser.add_argument('-gamma', help='gamma', type=float, default=0.99)
-
-
-parser.add_argument('-scale', help='scale', type=float, default=1.0)
-
-parser.add_argument('-EA_tau', help='EA_tau', type=float, default=0.3)
-
-parser.add_argument('-Soft_Update', default=1, type=int)
-parser.add_argument('-Value_Function', default=1, type=int)
-# CEM args
-# parser.add_argument('-pop_size', help='pop_size', type=int, default=10)     ### 种群大小
-parser.add_argument('-n_grad', default=3, type=int)                         ### 种群中的RL actor个数
-parser.add_argument('-sigma_init', default=1e-3, type=float)                ### 初始sigma大小
-parser.add_argument('-damp', default=1e-3, type=float)                      ### 噪声大小
-parser.add_argument('-damp_limit', default=1e-5, type=float)                ### 噪声衰减因子
-parser.add_argument('-elitism', action='store_true')                        ### 保护1st精英
-parser.add_argument('-mult_noise', action='store_true')                     ### 好像没有用到??????????????????????????
-
-ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
-parameters = Parameters(parser)  # Inject the cla arguments in the parameters object
-
-# Create Env
-#env = utils.NormalizedActions(gym.make(parameters.env_name))
-env = gym.make(parameters.env_name)
 print("env.action_space.low",env.action_space.low, "env.action_space.high",env.action_space.high)
 parameters.action_dim = env.action_space.shape[0]
 parameters.state_dim = env.observation_space.shape[0]
