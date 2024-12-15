@@ -2,6 +2,10 @@ import numpy as np
 import gym, torch
 import os
 from gym.wrappers import RecordVideo
+
+# Thiết lập EGL cho MuJoCo (tránh lỗi OpenGL)
+os.environ["MUJOCO_GL"] = "egl"
+
 cpu_num = 1
 os.environ ['OMP_NUM_THREADS'] = str(cpu_num)
 os.environ ['OPENBLAS_NUM_THREADS'] = str(cpu_num)
@@ -18,98 +22,85 @@ import pickle
 from EvoRainbow_core.parameters import Parameters
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-env', help='Environment Choices: (Swimmer-v2) (HalfCheetah-v2) (Hopper-v2) ' +
-                                 '(Walker2d-v2) (Ant-v2)', required=True, type=str)
-parser.add_argument('-seed', help='Random seed to be used', type=int, default=7)
-parser.add_argument('-pr', help='pr', type=int, default=128)
-parser.add_argument('-pop_size', help='pop_size', type=int, default=10)
-
-parser.add_argument('-disable_cuda', help='Disables CUDA', action='store_true')
-parser.add_argument('-render', help='Render gym episodes', action='store_true')
-parser.add_argument('-sync_period', help="How often to sync to population", type=int)
-parser.add_argument('-novelty', help='Use novelty exploration', action='store_true')
-parser.add_argument('-proximal_mut', help='Use safe mutation', action='store_true')
-parser.add_argument('-distil', help='Use distilation crossover', action='store_true')
-parser.add_argument('-distil_type', help='Use distilation crossover. Choices: (fitness) (distance)',
-                    type=str, default='fitness')
-parser.add_argument('-EA', help='Use ea', action='store_true')
-parser.add_argument('-RL', help='Use rl', action='store_true')
-parser.add_argument('-detach_z', help='detach_z', action='store_true')
-parser.add_argument('-random_choose', help='Use random_choose', action='store_true')
-
-parser.add_argument('-per', help='Use Prioritised Experience Replay', action='store_true')
-parser.add_argument('-use_all', help='Use all', action='store_true')
-
-parser.add_argument('-intention', help='intention', action='store_true')
-
-parser.add_argument('-mut_mag', help='The magnitude of the mutation', type=float, default=0.05)
-parser.add_argument('-tau', help='tau', type=float, default=0.005)
-
-parser.add_argument('-prob_reset_and_sup', help='prob_reset_and_sup', type=float, default=0.05)
-parser.add_argument('-frac', help='frac', type=float, default=0.1)
-
-
-parser.add_argument('-TD3_noise', help='tau', type=float, default=0.2)
-parser.add_argument('-mut_noise', help='Use a random mutation magnitude', action='store_true')
-parser.add_argument('-verbose_mut', help='Make mutations verbose', action='store_true')
-parser.add_argument('-verbose_crossover', help='Make crossovers verbose', action='store_true')
-parser.add_argument('-logdir', help='Folder where to save results', type=str, required=True)
-parser.add_argument('-opstat', help='Store statistics for the variation operators', action='store_true')
-parser.add_argument('-opstat_freq', help='Frequency (in generations) to store operator statistics', type=int, default=1)
-parser.add_argument('-save_periodic', help='Save actor, critic and memory periodically', action='store_true')
-parser.add_argument('-next_save', help='Generation save frequency for save_periodic', type=int, default=200)
-parser.add_argument('-K', help='K', type=int, default=5)
-parser.add_argument('-OFF_TYPE', help='OFF_TYPE', type=int, default=1)
-parser.add_argument('-num_evals', help='num_evals', type=int, default=1)
-
-parser.add_argument('-version', help='version', type=int, default=1)
-parser.add_argument('-time_steps', help='time_steps', type=int, default=1)
-parser.add_argument('-test_operators', help='Runs the operator runner to test the operators', action='store_true')
-parser.add_argument('-EA_actor_alpha', help='EA_actor_alpha', type=float, default=1.0)
-parser.add_argument('-state_alpha', help='state_alpha', type=float, default=1.0)
-parser.add_argument('-actor_alpha', help='actor_alpha', type=float, default=1.0)
-parser.add_argument('-theta', help='theta', type=float, default=0.5)
-
-parser.add_argument('-gamma', help='gamma', type=float, default=0.99)
-
-
-parser.add_argument('-scale', help='scale', type=float, default=1.0)
-
-parser.add_argument('-EA_tau', help='EA_tau', type=float, default=0.3)
-
+parser.add_argument('-env', required=True, type=str,
+                    help='Environment Choices: (Swimmer-v2) (HalfCheetah-v2) (Hopper-v2) (Walker2d-v2) (Ant-v2)')
+parser.add_argument('-seed', type=int, default=7)
+parser.add_argument('-pr', type=int, default=128)
+parser.add_argument('-pop_size', type=int, default=10)
+parser.add_argument('-disable_cuda', action='store_true')
+parser.add_argument('-render', action='store_true', help='Render gym episodes (record video)')
+parser.add_argument('-sync_period', type=int)
+parser.add_argument('-novelty', action='store_true')
+parser.add_argument('-proximal_mut', action='store_true')
+parser.add_argument('-distil', action='store_true')
+parser.add_argument('-distil_type', type=str, default='fitness')
+parser.add_argument('-EA', action='store_true')
+parser.add_argument('-RL', action='store_true')
+parser.add_argument('-detach_z', action='store_true')
+parser.add_argument('-random_choose', action='store_true')
+parser.add_argument('-per', action='store_true')
+parser.add_argument('-use_all', action='store_true')
+parser.add_argument('-intention', action='store_true')
+parser.add_argument('-mut_mag', type=float, default=0.05)
+parser.add_argument('-tau', type=float, default=0.005)
+parser.add_argument('-prob_reset_and_sup', type=float, default=0.05)
+parser.add_argument('-frac', type=float, default=0.1)
+parser.add_argument('-TD3_noise', type=float, default=0.2)
+parser.add_argument('-mut_noise', action='store_true')
+parser.add_argument('-verbose_mut', action='store_true')
+parser.add_argument('-verbose_crossover', action='store_true')
+parser.add_argument('-logdir', type=str, required=True)
+parser.add_argument('-opstat', action='store_true')
+parser.add_argument('-opstat_freq', type=int, default=1)
+parser.add_argument('-save_periodic', action='store_true')
+parser.add_argument('-next_save', type=int, default=200)
+parser.add_argument('-K', type=int, default=5)
+parser.add_argument('-OFF_TYPE', type=int, default=1)
+parser.add_argument('-num_evals', type=int, default=1)
+parser.add_argument('-version', type=int, default=1)
+parser.add_argument('-time_steps', type=int, default=1)
+parser.add_argument('-test_operators', action='store_true')
+parser.add_argument('-EA_actor_alpha', type=float, default=1.0)
+parser.add_argument('-state_alpha', type=float, default=1.0)
+parser.add_argument('-actor_alpha', type=float, default=1.0)
+parser.add_argument('-theta', type=float, default=0.5)
+parser.add_argument('-gamma', type=float, default=0.99)
+parser.add_argument('-scale', type=float, default=1.0)
+parser.add_argument('-EA_tau', type=float, default=0.3)
 parser.add_argument('-Soft_Update', default=1, type=int)
 parser.add_argument('-Value_Function', default=1, type=int)
-# CEM args
-# parser.add_argument('-pop_size', help='pop_size', type=int, default=10)     ### 种群大小
-parser.add_argument('-n_grad', default=3, type=int)                         ### 种群中的RL actor个数
-parser.add_argument('-sigma_init', default=1e-3, type=float)                ### 初始sigma大小
-parser.add_argument('-damp', default=1e-3, type=float)                      ### 噪声大小
-parser.add_argument('-damp_limit', default=1e-5, type=float)                ### 噪声衰减因子
-parser.add_argument('-elitism', action='store_true')                        ### 保护1st精英
-parser.add_argument('-mult_noise', action='store_true')                     ### 好像没有用到??????????????????????????
+parser.add_argument('-n_grad', default=3, type=int)
+parser.add_argument('-sigma_init', default=1e-3, type=float)
+parser.add_argument('-damp', default=1e-3, type=float)
+parser.add_argument('-damp_limit', default=1e-5, type=float)
+parser.add_argument('-elitism', action='store_true')
+parser.add_argument('-mult_noise', action='store_true')
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
-parameters = Parameters(parser)  # Inject the cla arguments in the parameters object
+parameters = Parameters(parser)  # Inject the cli arguments in the parameters object
 
-# Create Env
-#env = utils.NormalizedActions(gym.make(parameters.env_name))
-env = gym.make(parameters.env_name)
+# Tạo môi trường với render_mode="rgb_array" để tránh phụ thuộc OpenGL trực tiếp
+env = gym.make(parameters.env_name, render_mode="rgb_array")
+
 if parameters.render:
     video_folder = "./videos"
     if not os.path.exists(video_folder):
         os.makedirs(video_folder)
-    env = RecordVideo(env, video_folder=video_folder, episode_trigger=lambda episode_id: True)
+    # RecordVideo với render_mode="rgb_array" để có khung hình
+    env = RecordVideo(env, video_folder=video_folder, 
+                      episode_trigger=lambda episode_id: True)
     print(f"Lưu video quá trình chơi vào: {video_folder}")
-print("env.action_space.low",env.action_space.low, "env.action_space.high",env.action_space.high)
+
+print("env.action_space.low", env.action_space.low, "env.action_space.high", env.action_space.high)
 parameters.action_dim = env.action_space.shape[0]
 parameters.state_dim = env.observation_space.shape[0]
 
-# Write the parameters to a the info file and print them
+# Write the parameters to the info file and print them
 parameters.write_params(stdout=True)
 
 # Seed
 os.environ['PYTHONHASHSEED']= str(parameters.seed)
-env.seed(parameters.seed)
+env.reset(seed=parameters.seed)  # Sử dụng reset(seed=...) thay cho env.seed(...)
 torch.manual_seed(parameters.seed)
 np.random.seed(parameters.seed)
 random.seed(parameters.seed)
@@ -225,3 +216,6 @@ if __name__ == "__main__":
                     pickle.dump(agent.rl_agent.buffer, buffer_file)
 
             print("Progress Saved")
+    # Sau khi kết thúc huấn luyện, gọi close() để đảm bảo video được finalize
+    env.close()
+    print("Video finalized and saved.")
