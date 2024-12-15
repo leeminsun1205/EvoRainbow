@@ -1,6 +1,7 @@
 import numpy as np
 import gym, torch
 import os
+from gym.wrappers import RecordVideo
 cpu_num = 1
 os.environ ['OMP_NUM_THREADS'] = str(cpu_num)
 os.environ ['OPENBLAS_NUM_THREADS'] = str(cpu_num)
